@@ -46,22 +46,29 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             this.controlPoints[1] = midTarget.GetPosition(stream);
             this.controlPoints[2] = tipTarget.GetPosition(stream);
 
+            this.leftHandles[0] = GetHandle(rootTarget, stream);
+            this.leftHandles[1] = GetHandle(midTarget, stream);
+            this.leftHandles[2] = GetHandle(tipTarget, stream);
+
+            this.rightHandles[0] = GetHandle(rootTarget, stream, -1);
+            this.rightHandles[1] = GetHandle(midTarget, stream, -1);
+            this.rightHandles[2] = GetHandle(tipTarget, stream, -1);
+
             // Interpolate rotation on chain.
             
             //chain[0].SetRotation(stream, Quaternion.Slerp(chain[0].GetRotation(stream), rootRotation, w));
-            for (int i = 0; i < chain.Length - 2; ++i)
+            for (int i = 0; i < chain.Length - 1; ++i)
             {
-                
-                Vector3 pos = Evaluate(weights[i]);
-                Vector3 tan = EvaluateTangent(weights[i]);
+                Vector3 pos = GetPoint(weights[i]);
+                //Vector3 tan = EvaluateTangent(weights[i]);
 
-                Quaternion quat = Quaternion.Euler(tan.x, tan.y, tan.z);
+                //Quaternion quat = Quaternion.Euler(tan.x, tan.y, tan.z);
 
                 //Debug.Log($"chain[{i}]");
                 //Debug.Log($"QUAT <{quat.w}, {quat.x}, {quat.y}, {quat.z}>");
                 //Debug.Log($"POS <{pos.x}, {pos.y}, {pos.z}>");
                 
-                chain[i].SetRotation(stream, Quaternion.Slerp(chain[0].GetRotation(stream), quat, w));
+                //chain[i].SetRotation(stream, Quaternion.Slerp(chain[0].GetRotation(stream), quat, w));
                 chain[i].SetPosition(stream, pos);
             }
             
@@ -75,87 +82,134 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
 
     // Control points
     public NativeArray<Vector3> controlPoints;
+    public NativeArray<Vector3> leftHandles;
+    public NativeArray<Vector3> rightHandles;
+
     // Knot vector
     public NativeArray<float> knotVector;
     // Degree of the spline
     public int degree;
 
-    public Vector3 Evaluate(float t)
-    {
-        t = Mathf.Clamp01(t);
-        float oneMinusT = 1f - t;
-        int degree = controlPoints.Length - 1;
-        Vector3 result = Vector3.zero;
-
-        for (int i = 0; i <= degree; i++)
-        {
-            float blend = BinomialCoefficient(degree, i) * Mathf.Pow(oneMinusT, degree - i) * Mathf.Pow(t, i);
-            result += blend * controlPoints[i];
+    int Sampling {
+        get {
+            return 1000;
         }
+    }
+
+    public Vector3 GetPoint(float time)
+    {
+        // The evaluated points is between these two points
+        Vector3 startPoint;
+        Vector3 endPoint;
+        Vector3 startHandle;
+        Vector3 endHandle;
+        float timeRelativeToSegment;
+
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out timeRelativeToSegment);
+
+        return GetPointOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
+    }
+
+    public static Vector3 GetHandle(ReadWriteTransformHandle transform, AnimationStream stream, int i = 1) {
+        Vector3 handle = Vector3.up * i;
+        handle = transform.GetRotation(stream) * handle;
+        handle = transform.GetPosition(stream) + handle;
+        
+        return handle;
+    }
+
+    public static Vector3 GetPointOnCubicCurve(float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    {
+        float t = time;
+        float u = 1f - t;
+        float t2 = t * t;
+        float u2 = u * u;
+        float u3 = u2 * u;
+        float t3 = t2 * t;
+
+        Vector3 result =
+            (u3) * startPosition +
+            (3f * u2 * t) * startTangent +
+            (3f * u * t2) * endTangent +
+            (t3) * endPosition;
 
         return result;
     }
 
-    public Vector3 EvaluateTangent(float t)
+    public void GetCubicSegment(float time, out Vector3 startPoint, out Vector3 endPoint, out Vector3 startHandle, out Vector3 endHandle, out float timeRelativeToSegment)
     {
-        t = Mathf.Clamp01(t);
-        float oneMinusT = 1f - t;
-        int degree = controlPoints.Length - 1;
-        Vector3 tangent = Vector3.zero;
+        bool isSet = true;
+        startPoint = Vector3.negativeInfinity;
+        endPoint = Vector3.negativeInfinity;
+        startHandle = Vector3.negativeInfinity;
+        endHandle = Vector3.negativeInfinity;
 
-        for (int i = 0; i < degree; i++)
+        timeRelativeToSegment = 0f;
+
+        float subCurvePercent = 0f;
+        float totalPercent = 0f;
+        float approximateLength = GetApproximateLength();
+        int subCurveSampling = (this.Sampling / (this.controlPoints.Length - 1)) + 1;
+
+        for (int i = 0; i < this.controlPoints.Length - 1; i++)
         {
-            float blend = BinomialCoefficient(degree - 1, i) * Mathf.Pow(oneMinusT, degree - i - 1) * Mathf.Pow(t, i);
-            tangent += blend * (controlPoints[i + 1] - controlPoints[i]);
+            subCurvePercent = GetApproximateLengthOfCubicCurve(this.controlPoints[i], this.controlPoints[i + 1], this.rightHandles[i], this.leftHandles[i+1], subCurveSampling) / approximateLength;
+            if (subCurvePercent + totalPercent > time)
+            {
+                startPoint = this.controlPoints[i];
+                endPoint = this.controlPoints[i + 1];
+                startHandle = this.rightHandles[i];
+                endHandle = this.leftHandles[i + 1];
+                isSet = false;
+
+                break;
+            }
+
+            totalPercent += subCurvePercent;
         }
 
-        return tangent.normalized;
-    }
-
-    public float min;
-    public float max;
-
-     public Vector3 GetTangent(float t)
-    {
-        int n = controlPoints.Length - 1;
-        Vector3 tangent = Vector3.zero;
-
-        for (int i = 0; i <= n; i++)
+        if (isSet)
         {
-            float binomial = CalculateBinomialCoefficient(n, i) * (n - i);
-            float basis = Mathf.Pow(1f - t, n - i - 1) * Mathf.Pow(t, i);
-            tangent.x += binomial * controlPoints[i].x * basis;
-            tangent.y += binomial * controlPoints[i].y * basis;
-            tangent.z += binomial * controlPoints[i].z * basis;
+            // If the evaluated point is very near to the end of the curve we are in the last segment
+            startPoint = this.controlPoints[this.controlPoints.Length - 2];
+            endPoint = this.controlPoints[this.controlPoints.Length - 1];
+
+            startHandle = this.rightHandles[this.controlPoints.Length - 2];
+            endHandle = this.leftHandles[this.controlPoints.Length - 1];
+
+            // We remove the percentage of the last sub-curve
+            totalPercent -= subCurvePercent;
         }
 
-        tangent.x = Mathf.Clamp(tangent.x, min, max);
-        tangent.y = Mathf.Clamp(tangent.y, min, max);
-        tangent.z = Mathf.Clamp(tangent.z, min, max);
-
-        return tangent.normalized;
+        timeRelativeToSegment = (time - totalPercent) / subCurvePercent;
     }
 
-    private int BinomialCoefficient(int n, int k)
+    public float GetApproximateLength()
     {
-        int result = 1;
-        for (int i = 1; i <= k; i++)
+        float length = 0;
+        int subCurveSampling = (this.Sampling / (this.controlPoints.Length - 1)) + 1;
+        for (int i = 0; i < this.controlPoints.Length - 1; i++)
         {
-            result *= n - (k - i);
-            result /= i;
+            length += GetApproximateLengthOfCubicCurve(this.controlPoints[i], this.controlPoints[i + 1], this.rightHandles[i], this.leftHandles[i + 1], subCurveSampling);
         }
-        return result;
+
+        return length;
     }
 
-    private float CalculateBinomialCoefficient(int n, int k)
+    public float GetApproximateLengthOfCubicCurve(Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent, int sampling)
     {
-        return Factorial(n) / (Factorial(k) * Factorial(n - k));
-    }
+        float length = 0f;
+        Vector3 fromPoint = GetPointOnCubicCurve(0f, startPosition, endPosition, startTangent, endTangent);
 
-    private int Factorial(int n)
-    {
-        if (n <= 0) return 1;
-        return n * Factorial(n - 1);
+        for (int i = 0; i < sampling; i++)
+        {
+            float time = (i + 1) / (float)sampling;
+            Vector3 toPoint = GetPointOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
+            length += Vector3.Distance(fromPoint, toPoint);
+            fromPoint = toPoint;
+        }
+
+        return length;
     }
 }
 
@@ -209,8 +263,8 @@ public class TentacleConstraintBinder : AnimationJobBinder<TentacleConstraintJob
         job.midTarget = ReadWriteTransformHandle.Bind(animator, data.midTarget);
         job.knotVector = new NativeArray<float>(7, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.controlPoints = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        job.min = -100.00001f;
-        job.max = 100.00001f;
+        job.leftHandles = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        job.rightHandles = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
         for (int i = 0; i < chain.Length; ++i)
         {
