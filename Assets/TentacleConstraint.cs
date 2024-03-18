@@ -34,7 +34,7 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
     {
         float w = jobWeight.Get(stream);
 
-         if (w > 0f)
+        if (w > 0f)
         {
             // Retrieve root and tip rotation.
             Quaternion rootRotation = rootTarget.GetRotation(stream);
@@ -56,17 +56,19 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             this.controlRotations[1] = GetQuat(midTarget, stream);
             this.controlRotations[2] = GetQuat(tipTarget, stream);
 
-            // Interpolate rotation on chain.
-            
-            //chain[0].SetRotation(stream, Quaternion.Slerp(chain[0].GetRotation(stream), rootRotation, w));
+            Quaternion prevRot = Quaternion.identity;
             for (int i = 0; i < chain.Length; ++i)
             {
                 Vector3 pos = GetPoint(weights[i]);
-                //Vector3 tan = GetTangent(weights[i]);
-                //Quaternion quat = Quaternion.Euler(tan.x, tan.y, tan.z);
                 Quaternion quat = GetRotation(weights[i]);
+
+                if (i > 0) {
+                    Quaternion tempPrev = prevRot;
+                    prevRot = quat;
+                    quat = Quaternion.Inverse(tempPrev) * quat;
+                }
                 
-                chain[i].SetRotation(stream, quat);
+                chain[i].SetLocalRotation(stream, quat);
                 chain[i].SetPosition(stream, pos);
             }
         }
@@ -123,7 +125,9 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         // NADIR: the first bone is being rotated 90 degrees about the x axis. 
         // best guess is that up vector being passed for rotation is fucked
 
-        return GetRotationOnCubicCurve(timeRelativeToSegment, Vector3.forward, startPoint, endPoint, startHandle, endHandle);
+        Quaternion quat = GetRotationOnCubicCurve(timeRelativeToSegment, Vector3.forward, startPoint, endPoint, startHandle, endHandle);
+
+        return quat;
     }
 
     public static Quaternion GetRotationOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
