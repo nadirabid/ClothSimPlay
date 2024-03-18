@@ -39,39 +39,36 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             // Retrieve root and tip rotation.
             Quaternion rootRotation = rootTarget.GetRotation(stream);
             Quaternion tipRotation = tipTarget.GetRotation(stream);
-
-            this.degree = 2;
             
             this.controlPoints[0] = rootTarget.GetPosition(stream);
             this.controlPoints[1] = midTarget.GetPosition(stream);
             this.controlPoints[2] = tipTarget.GetPosition(stream);
 
-            this.leftHandles[0] = GetHandle(rootTarget, stream);
-            this.leftHandles[1] = GetHandle(midTarget, stream);
-            this.leftHandles[2] = GetHandle(tipTarget, stream);
+            this.leftHandles[0] = GetHandle(rootTarget, stream, -1);
+            this.leftHandles[1] = GetHandle(midTarget, stream, -1);
+            this.leftHandles[2] = GetHandle(tipTarget, stream, -1);
 
-            this.rightHandles[0] = GetHandle(rootTarget, stream, -1);
-            this.rightHandles[1] = GetHandle(midTarget, stream, -1);
-            this.rightHandles[2] = GetHandle(tipTarget, stream, -1);
+            this.rightHandles[0] = GetHandle(rootTarget, stream);
+            this.rightHandles[1] = GetHandle(midTarget, stream);
+            this.rightHandles[2] = GetHandle(tipTarget, stream);
+
+            this.controlRotations[0] = GetQuat(rootTarget, stream);
+            this.controlRotations[1] = GetQuat(midTarget, stream);
+            this.controlRotations[2] = GetQuat(tipTarget, stream);
 
             // Interpolate rotation on chain.
             
             //chain[0].SetRotation(stream, Quaternion.Slerp(chain[0].GetRotation(stream), rootRotation, w));
-            for (int i = 0; i < chain.Length - 1; ++i)
+            for (int i = 0; i < chain.Length; ++i)
             {
                 Vector3 pos = GetPoint(weights[i]);
-                //Vector3 tan = EvaluateTangent(weights[i]);
-
+                //Vector3 tan = GetTangent(weights[i]);
                 //Quaternion quat = Quaternion.Euler(tan.x, tan.y, tan.z);
-
-                //Debug.Log($"chain[{i}]");
-                //Debug.Log($"QUAT <{quat.w}, {quat.x}, {quat.y}, {quat.z}>");
-                //Debug.Log($"POS <{pos.x}, {pos.y}, {pos.z}>");
+                Quaternion quat = GetRotation(weights[i]);
                 
-                //chain[i].SetRotation(stream, Quaternion.Slerp(chain[0].GetRotation(stream), quat, w));
+                chain[i].SetRotation(stream, quat);
                 chain[i].SetPosition(stream, pos);
             }
-            
         }
         else
         {
@@ -82,17 +79,17 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
 
     // Control points
     public NativeArray<Vector3> controlPoints;
+
+    public NativeArray<Quaternion> controlRotations;
     public NativeArray<Vector3> leftHandles;
     public NativeArray<Vector3> rightHandles;
 
     // Knot vector
     public NativeArray<float> knotVector;
-    // Degree of the spline
-    public int degree;
 
     int Sampling {
         get {
-            return 1000;
+            return 500;
         }
     }
 
@@ -103,19 +100,111 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         Vector3 endPoint;
         Vector3 startHandle;
         Vector3 endHandle;
+        Quaternion startRot;
+        Quaternion endRot;
         float timeRelativeToSegment;
 
-        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out timeRelativeToSegment);
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
 
         return GetPointOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
+    }
+    public Quaternion GetRotation(float time)
+    {
+        Vector3 startPoint;
+        Vector3 endPoint;
+        Vector3 startHandle;
+        Vector3 endHandle;
+        Quaternion startRot;
+        Quaternion endRot;
+        float timeRelativeToSegment;
+
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
+
+        // NADIR: the first bone is being rotated 90 degrees about the x axis. 
+        // best guess is that up vector being passed for rotation is fucked
+
+        return GetRotationOnCubicCurve(timeRelativeToSegment, Vector3.forward, startPoint, endPoint, startHandle, endHandle);
+    }
+
+    public static Quaternion GetRotationOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    {
+        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
+        Vector3 binormal = Vector3.Cross(up, tangent).normalized;
+        Vector3 normal = Vector3.Cross(tangent, binormal).normalized;
+        // Debug.Log($"GetRotationOnCubicCurve(tangent): {tangent.x} {tangent.y} {tangent.z}");
+        // Debug.Log($"GetRotationOnCubicCurve(normal): {normal.x} {normal.y} {normal.z}");
+
+        return Quaternion.LookRotation(normal, tangent); // TODO: problem here cause this aligns to Z axis specifically
+    }
+
+     public Vector3 GetTangent(float time)
+    {
+        Vector3 startPoint;
+        Vector3 endPoint;
+        Vector3 startHandle;
+        Vector3 endHandle;
+        Quaternion startRot;
+        Quaternion endRot;
+        float timeRelativeToSegment;
+
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
+
+        return GetTangentOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
 
     public static Vector3 GetHandle(ReadWriteTransformHandle transform, AnimationStream stream, int i = 1) {
         Vector3 handle = Vector3.up * i;
+        handle = Vector3.Scale(transform.GetLocalScale(stream), handle);
         handle = transform.GetRotation(stream) * handle;
         handle = transform.GetPosition(stream) + handle;
         
         return handle;
+    }
+
+    public static Quaternion GetQuat(ReadWriteTransformHandle transform, AnimationStream stream) {        
+        return transform.GetLocalRotation(stream);
+    }
+
+
+    public static Vector3 GetTangentOnCubicCurve(float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    {
+        float t = time;
+        float u = 1f - t;
+        float u2 = u * u;
+        float t2 = t * t;
+
+        Vector3 tangent =
+            (-u2) * startPosition +
+            (u * (u - 2f * t)) * startTangent -
+            (t * (t - 2f * u)) * endTangent +
+            (t2) * endPosition;
+
+        return tangent.normalized;
+    }
+
+    public static Vector3 GetNormalOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    {
+        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
+        Vector3 binormal = Vector3.Cross(up, tangent).normalized;
+        Vector3 normal = Vector3.Cross(tangent, binormal).normalized;
+
+        // Nadir: getting zero for normal
+
+        // Debug.Log($"Nadir: {tangent.x} {tangent.y} {tangent.z}");
+        // Debug.Log($"Nadir2: {normal.x} {normal.y} {normal.z}");
+        // Debug.Log($"Nadir3: {binormal.x} {binormal.y} {binormal.z}");
+        return normal;
+    }
+
+    public static Vector3 GetBinormalOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    {
+        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
+        Vector3 binormal = Vector3.Cross(up, tangent);
+
+        // Debug.Log($"GetBinormalOnCubicCurve(tangent): {tangent.x} {tangent.y} {tangent.z}");
+        // Debug.Log($"GetBinormalOnCubicCurve(up): {up.x} {up.y} {up.z}");
+
+        return binormal.normalized;
     }
 
     public static Vector3 GetPointOnCubicCurve(float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
@@ -136,13 +225,15 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         return result;
     }
 
-    public void GetCubicSegment(float time, out Vector3 startPoint, out Vector3 endPoint, out Vector3 startHandle, out Vector3 endHandle, out float timeRelativeToSegment)
+    public void GetCubicSegment(float time, out Vector3 startPoint, out Vector3 endPoint, out Vector3 startHandle, out Vector3 endHandle, out Quaternion startRot, out Quaternion endRot, out float timeRelativeToSegment)
     {
         bool isSet = true;
         startPoint = Vector3.negativeInfinity;
         endPoint = Vector3.negativeInfinity;
         startHandle = Vector3.negativeInfinity;
         endHandle = Vector3.negativeInfinity;
+        startRot = Quaternion.identity;
+        endRot = Quaternion.identity;
 
         timeRelativeToSegment = 0f;
 
@@ -158,8 +249,13 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             {
                 startPoint = this.controlPoints[i];
                 endPoint = this.controlPoints[i + 1];
+
                 startHandle = this.rightHandles[i];
                 endHandle = this.leftHandles[i + 1];
+
+                startRot = this.controlRotations[i];
+                endRot = this.controlRotations[i + 1];
+
                 isSet = false;
 
                 break;
@@ -177,9 +273,13 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             startHandle = this.rightHandles[this.controlPoints.Length - 2];
             endHandle = this.leftHandles[this.controlPoints.Length - 1];
 
+            startRot = this.controlRotations[this.controlPoints.Length - 2];
+            endRot = this.controlRotations[this.controlPoints.Length - 1];
+
             // We remove the percentage of the last sub-curve
             totalPercent -= subCurvePercent;
         }
+
 
         timeRelativeToSegment = (time - totalPercent) / subCurvePercent;
     }
@@ -265,6 +365,7 @@ public class TentacleConstraintBinder : AnimationJobBinder<TentacleConstraintJob
         job.controlPoints = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.leftHandles = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.rightHandles = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        job.controlRotations = new NativeArray<Quaternion>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
         for (int i = 0; i < chain.Length; ++i)
         {
@@ -291,6 +392,11 @@ public class TentacleConstraintBinder : AnimationJobBinder<TentacleConstraintJob
         job.rotations.Dispose();
         job.knotVector.Dispose();
         job.controlPoints.Dispose();
+        job.leftHandles.Dispose();
+        job.rightHandles.Dispose();
+        job.controlRotations.Dispose();
+
+        // NADIR: MAKE SURE EVERYTHING GETS DISPOSED
     }
 
 #if UNITY_EDITOR
