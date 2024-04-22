@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Animations.Rigging;
-using UnityEngine.Splines;
 using Unity.Collections;
 using System;
 using Unity.Mathematics;
@@ -62,6 +61,10 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
                 Vector3 pos = GetPoint(weights[i]);
                 Quaternion quat = GetRotation(weights[i]);
 
+                // Vector3 from = chain[i].GetRotation(stream) * Vector3.up;
+                // Vector3 tangent = GetTangent(weights[i]);
+                // Quaternion quat = Quaternion.FromToRotation(from, tangent);
+
                 if (i > 0) {
                     Quaternion tempPrev = prevRot;
                     prevRot = quat;
@@ -94,6 +97,19 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             return 500;
         }
     }
+    
+    public static Vector3 GetHandle(ReadWriteTransformHandle transform, AnimationStream stream, int i = 1) {
+        Vector3 handle = Vector3.up * i;
+        handle = Vector3.Scale(transform.GetLocalScale(stream), handle);
+        handle = transform.GetRotation(stream) * handle;
+        handle = transform.GetPosition(stream) + handle;
+        
+        return handle;
+    }
+
+    public static Quaternion GetQuat(ReadWriteTransformHandle transform, AnimationStream stream) {        
+        return transform.GetLocalRotation(stream);
+    }
 
     public Vector3 GetPoint(float time)
     {
@@ -122,26 +138,10 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
 
         GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
 
-        // NADIR: the first bone is being rotated 90 degrees about the x axis. 
-        // best guess is that up vector being passed for rotation is fucked
-
-        Quaternion quat = GetRotationOnCubicCurve(timeRelativeToSegment, Vector3.forward, startPoint, endPoint, startHandle, endHandle);
-
-        return quat;
+        return GetRotationOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
 
-    public static Quaternion GetRotationOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
-    {
-        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
-        Vector3 binormal = Vector3.Cross(up, tangent).normalized;
-        Vector3 normal = Vector3.Cross(tangent, binormal).normalized;
-        // Debug.Log($"GetRotationOnCubicCurve(tangent): {tangent.x} {tangent.y} {tangent.z}");
-        // Debug.Log($"GetRotationOnCubicCurve(normal): {normal.x} {normal.y} {normal.z}");
-
-        return Quaternion.LookRotation(normal, tangent); // TODO: problem here cause this aligns to Z axis specifically
-    }
-
-     public Vector3 GetTangent(float time)
+    public Vector3 GetTangent(float time)
     {
         Vector3 startPoint;
         Vector3 endPoint;
@@ -156,19 +156,23 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         return GetTangentOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
 
-    public static Vector3 GetHandle(ReadWriteTransformHandle transform, AnimationStream stream, int i = 1) {
-        Vector3 handle = Vector3.up * i;
-        handle = Vector3.Scale(transform.GetLocalScale(stream), handle);
-        handle = transform.GetRotation(stream) * handle;
-        handle = transform.GetPosition(stream) + handle;
-        
-        return handle;
-    }
+    public static Quaternion GetRotationOnCubicCurve(float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    {
+        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
+        Vector3 binormal = Vector3.Cross(Vector3.forward, tangent).normalized;
+        Vector3 normal = Vector3.Cross(tangent, binormal).normalized;
 
-    public static Quaternion GetQuat(ReadWriteTransformHandle transform, AnimationStream stream) {        
-        return transform.GetLocalRotation(stream);
-    }
+        // TODO: figure out issue with normal because that's whats flipping around.
+        // really the only variable to compute normal is tangent. 
+        // ALso: we aren't using rotation of the handles???
 
+        // NOTE: problem here is that z-axis is what will be aligned to the forward param in LookRotation(). so 
+        // instead we pass the normal as the forward param. 
+        // NADIR: so how will x/y axis be aligned w.r.t the tangent vector?
+        // Confirm Eg: binormal computes in view camera plane, it computes forward. In tentacle view plane, 
+        // we should get Vector3.forward exactly 
+        return Quaternion.LookRotation(normal, tangent);
+    }
 
     public static Vector3 GetTangentOnCubicCurve(float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
     {
@@ -184,31 +188,6 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             (t2) * endPosition;
 
         return tangent.normalized;
-    }
-
-    public static Vector3 GetNormalOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
-    {
-        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
-        Vector3 binormal = Vector3.Cross(up, tangent).normalized;
-        Vector3 normal = Vector3.Cross(tangent, binormal).normalized;
-
-        // Nadir: getting zero for normal
-
-        // Debug.Log($"Nadir: {tangent.x} {tangent.y} {tangent.z}");
-        // Debug.Log($"Nadir2: {normal.x} {normal.y} {normal.z}");
-        // Debug.Log($"Nadir3: {binormal.x} {binormal.y} {binormal.z}");
-        return normal;
-    }
-
-    public static Vector3 GetBinormalOnCubicCurve(float time, Vector3 up, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
-    {
-        Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
-        Vector3 binormal = Vector3.Cross(up, tangent);
-
-        // Debug.Log($"GetBinormalOnCubicCurve(tangent): {tangent.x} {tangent.y} {tangent.z}");
-        // Debug.Log($"GetBinormalOnCubicCurve(up): {up.x} {up.y} {up.z}");
-
-        return binormal.normalized;
     }
 
     public static Vector3 GetPointOnCubicCurve(float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
@@ -335,10 +314,8 @@ public struct TentacleConstraintData : IAnimationJobData
 
     [SerializeField] public AnimationCurve curve;
 
-    [SerializeField] public SplineContainer spline;
-
     public bool IsValid() {
-        return !(midTarget == null || spline == null || root == null || tip == null || !tip.IsChildOf(root) || rootTarget == null || tipTarget == null || curve == null);
+        return !(midTarget == null || root == null || tip == null || !tip.IsChildOf(root) || rootTarget == null || tipTarget == null || curve == null);
     }
 
     public void SetDefaultValues() {
