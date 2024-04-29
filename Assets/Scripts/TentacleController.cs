@@ -4,6 +4,8 @@ using UnityEngine;
 
 class Tentacle {
     public Transform t;
+
+    public Transform mesh;
     public Transform p0;
     public Transform p1;
     public Transform p2;
@@ -31,6 +33,7 @@ public class TentacleController : MonoBehaviour
 
         float rotation = (360f / tentacles.Length) * i;
         tent.t.RotateAround(tent.t.position, tent.t.up, rotation);
+        //tent.mesh.RotateAround(tent.mesh.position, tent.mesh.up, rotation);
 
         tent.p1.Translate(new Vector3(1.4f, 0, 0));
         tent.p1.RotateAround(tent.p1.position, tent.p1.forward, -110);
@@ -41,20 +44,24 @@ public class TentacleController : MonoBehaviour
 
     Tentacle GetTentacle(int i)
     {
+        string meshName = "Tentacle";
         string name = "ArmatureTentacle";
         if (i > 9)
         {
             name += $".0{i}";
+            meshName += $".0{i}";
         }
         else if (i > 0)
         {
             name += $".00{i}";
+            meshName += $".00{i}";
         }
 
         //Debug.Log(name);
 
         Tentacle tentacle = new Tentacle();
         tentacle.t = transform.Find(name);
+        tentacle.mesh = transform.Find(meshName);
 
         Transform rig = tentacle.t.Find("Rig 1");
         Transform constraint = rig.Find("tentacle_constraint");

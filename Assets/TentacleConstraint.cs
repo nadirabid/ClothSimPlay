@@ -68,26 +68,15 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
             this.rightHandles[1] = GetHandle(midTarget, stream);
             this.rightHandles[2] = GetHandle(tipTarget, stream);
 
-            this.controlRotations[0] = rootTarget.GetRotation(stream);
-            this.controlRotations[1] = midTarget.GetRotation(stream);
-            this.controlRotations[2] = tipTarget.GetRotation(stream);
-
-            Quaternion prevRot = Quaternion.identity;
-            for (int i = 0; i < chain.Length; ++i)
-            {
+            Quaternion prevRot = componentTransform.GetRotation(stream);
+            for (int i = 0; i < chain.Length; i++) {
                 Vector3 pos = GetPoint(weights[i]);
                 Quaternion quat = GetRotation(stream, weights[i]);
 
-                // Vector3 from = chain[i].GetRotation(stream) * Vector3.up;
-                // Vector3 tangent = GetTangent(weights[i]);
-                // Quaternion quat = Quaternion.FromToRotation(from, tangent);
+                Quaternion tempPrev = prevRot;
+                prevRot = quat;
+                quat = Quaternion.Inverse(tempPrev) * quat;
 
-                if (i > 0) {
-                    Quaternion tempPrev = prevRot;
-                    prevRot = quat;
-                    quat = Quaternion.Inverse(tempPrev) * quat;
-                }
-                
                 chain[i].SetLocalRotation(stream, quat);
                 chain[i].SetPosition(stream, pos);
             }
@@ -100,9 +89,7 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
     }
     
     public static Vector3 GetHandle(ReadWriteTransformHandle transform, AnimationStream stream, int i = 1) {
-        Vector3 handle = Vector3.up * i;
-        //handle = Vector3.Scale(transform.GetLocalScale(stream), handle);
-        handle = transform.GetRotation(stream) * handle;
+        Vector3 handle = (transform.GetRotation(stream) * Vector3.up).normalized * i;
         handle = transform.GetPosition(stream) + handle;
         
         return handle;
@@ -135,7 +122,7 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
 
         GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
 
-        return GetRotationOnCubicCurve(stream, timeRelativeToSegment, startRot, startPoint, endPoint, startHandle, endHandle);
+        return GetRotationOnCubicCurve(stream, timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
 
     public Vector3 GetTangent(float time)
@@ -153,7 +140,7 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         return GetTangentOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
 
-    public Quaternion GetRotationOnCubicCurve(AnimationStream stream, float time, Quaternion rot, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
+    public Quaternion GetRotationOnCubicCurve(AnimationStream stream, float time, Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent)
     {
         Vector3 tangent = GetTangentOnCubicCurve(time, startPosition, endPosition, startTangent, endTangent);
         Vector3 binormal = Vector3.Cross(componentTransform.GetRotation(stream) * Vector3.forward, tangent).normalized;
