@@ -26,12 +26,9 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
     /// <summary>An array of weight values used to adjust how twist is distributed along the chain.</summary>
     public NativeArray<float> weights;
     /// <summary>An array of rotation offsets to maintain the chain initial shape.</summary>
-    public NativeArray<Quaternion> rotations;
 
     // Control points
     public NativeArray<Vector3> controlPoints;
-
-    public NativeArray<Quaternion> controlRotations;
     public NativeArray<Vector3> leftHandles;
     public NativeArray<Vector3> rightHandles;
 
@@ -102,11 +99,9 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         Vector3 endPoint;
         Vector3 startHandle;
         Vector3 endHandle;
-        Quaternion startRot;
-        Quaternion endRot;
         float timeRelativeToSegment;
 
-        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out timeRelativeToSegment);
 
         return GetPointOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
@@ -116,11 +111,9 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         Vector3 endPoint;
         Vector3 startHandle;
         Vector3 endHandle;
-        Quaternion startRot;
-        Quaternion endRot;
         float timeRelativeToSegment;
 
-        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out timeRelativeToSegment);
 
         return GetRotationOnCubicCurve(stream, timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
@@ -131,11 +124,9 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         Vector3 endPoint;
         Vector3 startHandle;
         Vector3 endHandle;
-        Quaternion startRot;
-        Quaternion endRot;
         float timeRelativeToSegment;
 
-        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out startRot, out endRot, out timeRelativeToSegment);
+        GetCubicSegment(time, out startPoint, out endPoint, out startHandle, out endHandle, out timeRelativeToSegment);
 
         return GetTangentOnCubicCurve(timeRelativeToSegment, startPoint, endPoint, startHandle, endHandle);
     }
@@ -192,15 +183,13 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
         return result;
     }
 
-    public void GetCubicSegment(float time, out Vector3 startPoint, out Vector3 endPoint, out Vector3 startHandle, out Vector3 endHandle, out Quaternion startRot, out Quaternion endRot, out float timeRelativeToSegment)
+    public void GetCubicSegment(float time, out Vector3 startPoint, out Vector3 endPoint, out Vector3 startHandle, out Vector3 endHandle, out float timeRelativeToSegment)
     {
         bool isSet = true;
         startPoint = Vector3.negativeInfinity;
         endPoint = Vector3.negativeInfinity;
         startHandle = Vector3.negativeInfinity;
         endHandle = Vector3.negativeInfinity;
-        startRot = Quaternion.identity;
-        endRot = Quaternion.identity;
 
         timeRelativeToSegment = 0f;
 
@@ -220,9 +209,6 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
                 startHandle = this.rightHandles[i];
                 endHandle = this.leftHandles[i + 1];
 
-                startRot = this.controlRotations[i];
-                endRot = this.controlRotations[i + 1];
-
                 isSet = false;
 
                 break;
@@ -239,9 +225,6 @@ public struct TentacleConstraintJob : IWeightedAnimationJob
 
             startHandle = this.rightHandles[this.controlPoints.Length - 2];
             endHandle = this.leftHandles[this.controlPoints.Length - 1];
-
-            startRot = this.controlRotations[this.controlPoints.Length - 2];
-            endRot = this.controlRotations[this.controlPoints.Length - 1];
 
             // We remove the percentage of the last sub-curve
             totalPercent -= subCurvePercent;
@@ -323,7 +306,6 @@ public class TentacleConstraintBinder : AnimationJobBinder<TentacleConstraintJob
         job.chain = new NativeArray<ReadWriteTransformHandle>(chain.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.steps = new NativeArray<float>(chain.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.weights = new NativeArray<float>(chain.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        job.rotations = new NativeArray<Quaternion>(chain.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.rootTarget = ReadWriteTransformHandle.Bind(animator, data.rootTarget);
         job.tipTarget = ReadWriteTransformHandle.Bind(animator, data.tipTarget);
         job.midTarget = ReadWriteTransformHandle.Bind(animator, data.midTarget);
@@ -331,21 +313,12 @@ public class TentacleConstraintBinder : AnimationJobBinder<TentacleConstraintJob
         job.controlPoints = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.leftHandles = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         job.rightHandles = new NativeArray<Vector3>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        job.controlRotations = new NativeArray<Quaternion>(3, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
         for (int i = 0; i < chain.Length; ++i)
         {
             job.chain[i] = ReadWriteTransformHandle.Bind(animator, chain[i]);
             job.steps[i] = steps[i];
             job.weights[i] = Mathf.Clamp01(data.curve.Evaluate(steps[i]));
-        }
-
-        job.rotations[0] = Quaternion.identity;
-        job.rotations[chain.Length - 1] = Quaternion.identity;
-        for (int i = 1; i < chain.Length - 1; ++i)
-        {
-            // inverse(lerp(chain.first.rot, chain.last.rot, job.weights[i]) * chain[i].rot)
-            job.rotations[i] = Quaternion.Inverse(Quaternion.Lerp(chain[0].rotation, chain[chain.Length - 1].rotation, job.weights[i])) * chain[i].rotation;
         }
 
         return job;
@@ -355,12 +328,10 @@ public class TentacleConstraintBinder : AnimationJobBinder<TentacleConstraintJob
         job.chain.Dispose();
         job.weights.Dispose();
         job.steps.Dispose();
-        job.rotations.Dispose();
         job.knotVector.Dispose();
         job.controlPoints.Dispose();
         job.leftHandles.Dispose();
         job.rightHandles.Dispose();
-        job.controlRotations.Dispose();
 
         // NADIR: MAKE SURE EVERYTHING GETS DISPOSED
     }
