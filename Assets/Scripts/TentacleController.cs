@@ -29,12 +29,21 @@ public class TentacleController : MonoBehaviour
     {
         Tentacle tent = tentacles[i];
 
-        // TODO: determine position
-        tent.p1.position += new Vector3(1.4f, 0, 0);
-        tent.p1.RotateAround(tent.p1.position, Vector3.forward, -110);
+        float rotation = (360f / tentacles.Length) * i;
+        // tent.p0.RotateAround(tent.p0.position, Vector3.up, rotation);
+        // tent.p1.RotateAround(tent.p1.position, Vector3.up, rotation);
+        // tent.p2.RotateAround(tent.p2.position, Vector3.up, rotation);
+        //Debug.Log($"Rotate {i} by {rotation}");
+        tent.t.RotateAround(tent.t.position, tent.t.up, rotation);
 
-        tent.p2.position += new Vector3(2, -5, 0);
-        tent.p2.RotateAround(tent.p2.position, Vector3.forward, -200);
+        // TODO: calculate position by moving in the "forward" direction of the transform
+        // how to get transform.forward
+
+        tent.p1.Translate(new Vector3(1.4f, 0, 0));
+        tent.p1.RotateAround(tent.p1.position, tent.p1.forward, -110);
+
+        tent.p2.Translate(new Vector3(2, -5, 0));
+        tent.p2.RotateAround(tent.p2.position, tent.p2.forward, -200);
     }
 
     Tentacle GetTentacle(int i)
