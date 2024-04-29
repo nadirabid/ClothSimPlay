@@ -36,9 +36,6 @@ public class TentacleController : MonoBehaviour
         //Debug.Log($"Rotate {i} by {rotation}");
         tent.t.RotateAround(tent.t.position, tent.t.up, rotation);
 
-        // TODO: calculate position by moving in the "forward" direction of the transform
-        // how to get transform.forward
-
         tent.p1.Translate(new Vector3(1.4f, 0, 0));
         tent.p1.RotateAround(tent.p1.position, tent.p1.forward, -110);
 
