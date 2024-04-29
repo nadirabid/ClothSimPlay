@@ -1220,6 +1220,9 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 2041899828}
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5c98968c5a2654c17909f416cea374ac, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1139985609}
     - targetCorrespondingSourceObject: {fileID: 72037030017442285, guid: 5c98968c5a2654c17909f416cea374ac, type: 3}
       insertIndex: -1
       addedObject: {fileID: 269146079}
@@ -1923,8 +1926,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Weight: 1
   m_Data:
-    root: {fileID: 1827350586}
-    tip: {fileID: 1532447450}
+    root: {fileID: 1234101187}
+    tip: {fileID: 1038283681}
     rootTarget: {fileID: 957980345}
     tipTarget: {fileID: 105535477}
     midTarget: {fileID: 1935110760}
@@ -5523,6 +5526,23 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -7815691031881316382, guid: 5c98968c5a2654c17909f416cea374ac, type: 3}
   m_PrefabInstance: {fileID: 269146009}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1139985607 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 5c98968c5a2654c17909f416cea374ac, type: 3}
+  m_PrefabInstance: {fileID: 269146009}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1139985609
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1139985607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf8d073251ad34ca58fec9c28f40c726, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1140280962 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -221180842759695450, guid: 5c98968c5a2654c17909f416cea374ac, type: 3}
@@ -8025,7 +8045,7 @@ MonoBehaviour:
   m_Data:
     root: {fileID: 535345734}
     tip: {fileID: 1680250564}
-    rootTarget: {fileID: 490899086}
+    rootTarget: {fileID: 1388635528}
     tipTarget: {fileID: 487716266}
     midTarget: {fileID: 1387494804}
     curve:
