@@ -30,10 +30,6 @@ public class TentacleController : MonoBehaviour
         Tentacle tent = tentacles[i];
 
         float rotation = (360f / tentacles.Length) * i;
-        // tent.p0.RotateAround(tent.p0.position, Vector3.up, rotation);
-        // tent.p1.RotateAround(tent.p1.position, Vector3.up, rotation);
-        // tent.p2.RotateAround(tent.p2.position, Vector3.up, rotation);
-        //Debug.Log($"Rotate {i} by {rotation}");
         tent.t.RotateAround(tent.t.position, tent.t.up, rotation);
 
         tent.p1.Translate(new Vector3(1.4f, 0, 0));
