@@ -9,6 +9,15 @@ class Tentacle {
     public Transform p0;
     public Transform p1;
     public Transform p2;
+
+    public GameObject sp1;
+    public GameObject ep1;
+
+    public GameObject sp2;
+    public GameObject ep2;
+
+    public Interpolations start;
+    public Interpolations end;
 }
 
 class Interpolations {
@@ -29,8 +38,11 @@ public class TentacleController : MonoBehaviour
     Tentacle[] tentacles;
     Interpolations[] interpolations;
 
-    private float timeToMove = 1f;
-    private float elapsedTime = 0f;
+    Interpolations previous;
+    Interpolations current;
+
+    private float timeToMove = 0.2f;
+    private float elapsedTime = 10000f;
 
     private int currentInterp = 0;
 
@@ -52,28 +64,58 @@ public class TentacleController : MonoBehaviour
     {
         elapsedTime += Time.deltaTime;
 
-        int prevInterp = currentInterp;
-
         if (elapsedTime > timeToMove)
         {
             elapsedTime = 0;
             currentInterp = (currentInterp + 1) % interpolations.Length;
+            
+            Debug.Log("interp index" + currentInterp);
+            Interpolations curr = interpolations[1];
+
+            for (int i = 0; i < tentacles.Length; i++)
+            {
+                Tentacle tent = tentacles[i];
+
+                /// p1
+                
+                // start
+                tent.sp1.transform.position = tent.p1.position;
+                tent.sp1.transform.rotation = tent.p1.rotation;
+
+                // end
+                tent.ep1.transform.position = tent.p1.position;
+                tent.ep1.transform.rotation = tent.p1.rotation;
+                tent.ep1.transform.Translate(curr.p1Vec);
+                tent.ep1.transform.RotateAround(tent.ep1.transform.position, tent.ep1.transform.forward, curr.p1Rot);
+
+                /// p2
+                
+                // start
+                tent.sp2.transform.position = tent.p2.position;
+                tent.sp2.transform.rotation = tent.p2.rotation;
+                
+                // end
+                tent.ep2.transform.position = tent.p2.position;
+                tent.ep2.transform.rotation = tent.p2.rotation;
+
+                tent.ep2.transform.Translate(curr.p2Vec);
+                tent.ep2.transform.RotateAround(tent.ep2.transform.position, tent.ep2.transform.forward, curr.p2Rot);
+
+                //Debug.Log($"interps {curr.p1Vec.ToString()} {curr.p2Vec.ToString()}");
+            }
         }
 
         float t = elapsedTime / timeToMove;
-
-        Interpolations curr = interpolations[currentInterp];
-        Interpolations prev = interpolations[prevInterp];
 
         for (int i = 0; i < tentacles.Length; i++)
         {
             Tentacle tent = tentacles[i];
 
-            tent.p1.Translate(Vector3.Lerp(prev.p1Vec, curr.p1Vec, t));
-            tent.p1.RotateAround(tent.p1.position, tent.p1.forward, Mathf.Lerp(prev.p1Rot, curr.p1Rot, t));
+            tent.p1.position = Vector3.Lerp(tent.sp1.transform.position, tent.ep1.transform.position, t);
+            tent.p1.rotation = Quaternion.Lerp(tent.sp1.transform.rotation, tent.ep1.transform.rotation, t);
 
-            tent.p2.Translate(Vector3.Lerp(prev.p2Vec, curr.p2Vec, t));
-            tent.p2.RotateAround(tent.p2.position, tent.p2.forward, Mathf.Lerp(prev.p2Rot, curr.p2Rot, t));
+            tent.p2.position = Vector3.Lerp(tent.sp2.transform.position, tent.ep2.transform.position, t);
+            tent.p2.rotation = Quaternion.Lerp(tent.sp2.transform.rotation, tent.ep2.transform.rotation, t);
         }
     }
 
@@ -89,14 +131,19 @@ public class TentacleController : MonoBehaviour
         interpolations[1] = new Interpolations();
         interpolations[1].p1Vec = new Vector3(0.2f, 0.2f, 0f);
         interpolations[1].p1Rot = 20f;
-        interpolations[1].p2Vec = new Vector3(3f, 3f, 0f);
+        interpolations[1].p2Vec = new Vector3(1f, 1f, 0f);
         interpolations[1].p2Rot = -10f;
 
-        interpolations[2] = new Interpolations();
-        interpolations[2].p1Vec = new Vector3(0.2f, 0.1f, 0f);
-        interpolations[2].p1Rot = 10f;
-        interpolations[2].p2Vec = new Vector3(2f, 3f, 0f);
-        interpolations[2].p2Rot = 180f;
+        // interpolations[2] = new Interpolations();
+        // interpolations[2].p1Vec = new Vector3(0.2f, 0.1f, 0f);
+        // interpolations[2].p1Rot = 10f;
+        // interpolations[2].p2Vec = new Vector3(1f, 1f, 0f);
+        // interpolations[2].p2Rot = 180f;
+    }
+
+    void UpdateCurrentPreviousInterpolation()
+    {
+
     }
 
     void ApplyInterpolation(Tentacle tent, Interpolations interp)
@@ -106,6 +153,8 @@ public class TentacleController : MonoBehaviour
 
         tent.p2.Translate(interp.p2Vec);
         tent.p2.RotateAround(tent.p2.position, tent.p2.forward, interp.p2Rot);
+
+
     }
 
     void SetDefaultTentacleTransforms(int i)
@@ -114,12 +163,6 @@ public class TentacleController : MonoBehaviour
 
         float rotation = (360f / tentacles.Length) * i;
         tent.t.RotateAround(tent.t.position, tent.t.up, rotation);
-
-        // tent.p1.Translate(new Vector3(1.4f, 0, 0));
-        // tent.p1.RotateAround(tent.p1.position, tent.p1.forward, -110);
-
-        // tent.p2.Translate(new Vector3(2, -5, 0));
-        // tent.p2.RotateAround(tent.p2.position, tent.p2.forward, -200);
     }
 
     Tentacle GetTentacle(int i)
@@ -140,8 +183,14 @@ public class TentacleController : MonoBehaviour
         //Debug.Log(name);
 
         Tentacle tentacle = new Tentacle();
+        tentacle.start = new Interpolations();
+        tentacle.end = new Interpolations();
         tentacle.t = transform.Find(name);
         tentacle.mesh = transform.Find(meshName);
+        tentacle.sp1 = new GameObject();
+        tentacle.ep1 = new GameObject();
+        tentacle.sp2 = new GameObject();
+        tentacle.ep2 = new GameObject();
 
         Transform rig = tentacle.t.Find("Rig 1");
         Transform constraint = rig.Find("tentacle_constraint");
