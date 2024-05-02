@@ -38,6 +38,8 @@ public class TentacleController : MonoBehaviour
     Tentacle[] tentacles;
     Interpolations[] interpolations;
 
+    Interpolations resting;
+
     Interpolations previous;
     Interpolations current;
 
@@ -50,13 +52,12 @@ public class TentacleController : MonoBehaviour
     {
         InitializeInterpolations();
 
-
         tentacles = new Tentacle[15];
         for (int i = 0; i < tentacles.Length; i++)
         {
             tentacles[i] = GetTentacle(i);
             SetDefaultTentacleTransforms(i);
-            ApplyInterpolation(tentacles[i], interpolations[0]);
+            ApplyInterpolation(tentacles[i], resting);
         }
     }
 
@@ -68,9 +69,10 @@ public class TentacleController : MonoBehaviour
         {
             elapsedTime = 0;
             currentInterp = (currentInterp + 1) % interpolations.Length;
-            
+
             Debug.Log("interp index" + currentInterp);
-            Interpolations curr = interpolations[1];
+            Interpolations curr = interpolations[currentInterp];
+            Debug.Log($"interps {curr.p1Vec.ToString()} {curr.p2Vec.ToString()}");
 
             for (int i = 0; i < tentacles.Length; i++)
             {
@@ -100,12 +102,11 @@ public class TentacleController : MonoBehaviour
 
                 tent.ep2.transform.Translate(curr.p2Vec);
                 tent.ep2.transform.RotateAround(tent.ep2.transform.position, tent.ep2.transform.forward, curr.p2Rot);
-
-                //Debug.Log($"interps {curr.p1Vec.ToString()} {curr.p2Vec.ToString()}");
             }
         }
 
         float t = elapsedTime / timeToMove;
+        //Debug.Log($"elapsedTime {elapsedTime} / {timeToMove} = {t}");
 
         for (int i = 0; i < tentacles.Length; i++)
         {
@@ -122,17 +123,29 @@ public class TentacleController : MonoBehaviour
     void InitializeInterpolations() {
         interpolations = new Interpolations[3];
 
+        resting = new Interpolations();
+        resting.p1Vec = new Vector3(1.4f, 0f, 0f);
+        resting.p1Rot = -110f;
+        resting.p2Vec = new Vector3(2f, -5f, 0f);
+        resting.p2Rot = -200f;
+
         interpolations[0] = new Interpolations();
-        interpolations[0].p1Vec = new Vector3(1.4f, 0f, 0f);
-        interpolations[0].p1Rot = -110f;
-        interpolations[0].p2Vec = new Vector3(2f, -5f, 0f);
-        interpolations[0].p2Rot = -200f;
+        interpolations[0].p1Vec = new Vector3(0.2f, 0.2f, 0f);
+        interpolations[0].p1Rot = 0f;//20f;
+        interpolations[0].p2Vec = Vector3.zero;
+        interpolations[0].p2Rot = 0f;//-10f;
 
         interpolations[1] = new Interpolations();
-        interpolations[1].p1Vec = new Vector3(0.2f, 0.2f, 0f);
-        interpolations[1].p1Rot = 20f;
-        interpolations[1].p2Vec = new Vector3(1f, 1f, 0f);
-        interpolations[1].p2Rot = -10f;
+        interpolations[1].p1Vec = new Vector3(-0.2f, -0.2f, 0f);
+        interpolations[1].p1Rot = 0f;//-110f;
+        interpolations[1].p2Vec = Vector3.zero;
+        interpolations[1].p2Rot = 0f;//-200f;
+
+        // interpolations[2] = new Interpolations();
+        // interpolations[2].p1Vec = (interpolations[0].p1Vec + interpolations[1].p1Vec) * -1;
+        // interpolations[2].p1Rot = 0f;//-110f;
+        // interpolations[2].p2Vec = (interpolations[0].p2Vec + interpolations[1].p2Vec) * -1;
+        // interpolations[2].p2Rot = 0f;//-200f;
 
         // interpolations[2] = new Interpolations();
         // interpolations[2].p1Vec = new Vector3(0.2f, 0.1f, 0f);
@@ -153,8 +166,6 @@ public class TentacleController : MonoBehaviour
 
         tent.p2.Translate(interp.p2Vec);
         tent.p2.RotateAround(tent.p2.position, tent.p2.forward, interp.p2Rot);
-
-
     }
 
     void SetDefaultTentacleTransforms(int i)
