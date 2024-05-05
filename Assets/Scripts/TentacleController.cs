@@ -4,19 +4,10 @@ using UnityEngine;
 
 class Tentacle {
     public Transform t;
-
     public Transform mesh;
     public Transform p0;
     public Transform p1;
     public Transform p2;
-}
-
-class Interpolations {
-    public Vector3 p1Vec;
-    public Vector3 p2Vec;
-
-    public float p1Rot;
-    public float p2Rot;
 }
 
 class CustomTransform
@@ -35,9 +26,6 @@ public class TentacleController : MonoBehaviour
     // Start is called before the first frame update
 
     Tentacle[] tentacles;
-    Interpolations[] interpolations;
-
-    Interpolations resting;
 
     CustomTransform[] pt0;
     CustomTransform[] pt1;
@@ -50,7 +38,6 @@ public class TentacleController : MonoBehaviour
 
     void Start()
     {
-        InitializeInterpolations();
         InitializeTransforms();
 
         tentacles = new Tentacle[15];
@@ -74,8 +61,7 @@ public class TentacleController : MonoBehaviour
         }
 
         int prevInterp = (currentInterp - 1 + pt0.Length) % pt0.Length;
-        // int prevInterp = 2;
-        // currentInterp = 2;
+        // TODO: realistically we need interp to have a 
 
         float t = elapsedTime / timeToMove;
         //Debug.Log($"elapsedTime {elapsedTime} / {timeToMove} = {t}");
@@ -92,24 +78,12 @@ public class TentacleController : MonoBehaviour
         }
     }
 
-    void InitializeInterpolations() {
-        interpolations = new Interpolations[3];
-
-        resting = new Interpolations();
-        resting.p1Vec = new Vector3(1.4f, 0f, 0f);
-        resting.p1Rot = -110f;
-        resting.p2Vec = new Vector3(2f, -5f, 0f);
-        resting.p2Rot = -200f;
-    }
-
     void InitializeTransforms()
     {
         int num = 4;
         pt0 = new CustomTransform[num];
         pt1 = new CustomTransform[num];
         pt2 = new CustomTransform[num];
-
-        // Next: determine how to store rotation
 
         pt0[0] = new CustomTransform();
         pt1[0] = new CustomTransform();
