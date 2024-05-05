@@ -39,9 +39,6 @@ public class TentacleController : MonoBehaviour
 
     Interpolations resting;
 
-    Interpolations previous;
-    Interpolations current;
-
     CustomTransform[] pt0;
     CustomTransform[] pt1;
     CustomTransform[] pt2;
@@ -76,10 +73,10 @@ public class TentacleController : MonoBehaviour
             Debug.Log("interp index" + currentInterp);
         }
 
-        currentInterp = 3;
-        int prevInterp = currentInterp;//(currentInterp - 1 + pt0.Length) % pt0.Length;
+        int prevInterp = (currentInterp - 1 + pt0.Length) % pt0.Length;
+        // int prevInterp = 2;
+        // currentInterp = 2;
 
-        
         float t = elapsedTime / timeToMove;
         //Debug.Log($"elapsedTime {elapsedTime} / {timeToMove} = {t}");
 
@@ -116,27 +113,27 @@ public class TentacleController : MonoBehaviour
 
         pt0[0] = new CustomTransform();
         pt1[0] = new CustomTransform();
-        pt1[0].position = new Vector3(0.3f, 2.1f, 0f);
-        pt1[0].rotation = Quaternion.AngleAxis(-120f, Vector3.forward);
+        pt1[0].position = new Vector3(1.8f, 2.2f, 0f);
+        pt1[0].rotation = Quaternion.AngleAxis(-100f, Vector3.forward);
         pt2[0] = new CustomTransform();
-        pt2[0].position = new Vector3(1.0f, -4.0f, 0);
-        pt2[0].rotation = Quaternion.AngleAxis(-210f, Vector3.forward);
+        pt2[0].position = new Vector3(2.1f, 0f, 0f);
+        pt2[0].rotation =Quaternion.AngleAxis(-210f, Vector3.forward);
 
         pt0[1] = new CustomTransform();
         pt1[1] = new CustomTransform();
-        pt1[1].position = new Vector3(0.3f, 2.1f, 0f);
-        pt1[1].rotation = Quaternion.AngleAxis(-120f, Vector3.forward);
+        pt1[1].position = new Vector3(2.0f, 2.1f, 0f);
+        pt1[1].rotation = Quaternion.AngleAxis(-70f, Vector3.forward);
         pt2[1] = new CustomTransform();
-        pt2[1].position = new Vector3(1.0f, -4.0f, 0);
-        pt2[1].rotation = Quaternion.AngleAxis(-210f, Vector3.forward);
+        pt2[1].position = new Vector3(3.9f, 1.3f, 0f);
+        pt2[1].rotation =Quaternion.AngleAxis(-130f, Vector3.forward);
 
         pt0[2] = new CustomTransform();
         pt1[2] = new CustomTransform();
-        pt1[2].position = new Vector3(0.3f, 2.1f, 0f);
-        pt1[2].rotation = Quaternion.AngleAxis(-120f, Vector3.forward);
+        pt1[2].position = new Vector3(1.8f, 1.8f, 0f);
+        pt1[2].rotation = Quaternion.AngleAxis(-80f, Vector3.forward);
         pt2[2] = new CustomTransform();
-        pt2[2].position = new Vector3(1.0f, -4.0f, 0);
-        pt2[2].rotation = Quaternion.AngleAxis(-210f, Vector3.forward);
+        pt2[2].position = new Vector3(4.1f, 2.0f, 0f);
+        pt2[2].rotation =Quaternion.AngleAxis(-70f, Vector3.forward);
 
         pt0[3] = new CustomTransform();
         pt1[3] = new CustomTransform();
@@ -151,11 +148,11 @@ public class TentacleController : MonoBehaviour
     {
         Tentacle tent = tentacles[i];
 
-        tent.p1.Translate(resting.p1Vec);
-        tent.p1.RotateAround(tent.p1.position, tent.p1.forward, resting.p1Rot);
+        tent.p1.localPosition = pt1[3].position;
+        tent.p1.localRotation = pt1[3].rotation;
 
-        tent.p2.Translate(resting.p2Vec);
-        tent.p2.RotateAround(tent.p2.position, tent.p2.forward, resting.p2Rot);
+        tent.p2.localPosition = pt2[3].position;
+        tent.p2.localRotation = pt2[3].rotation;
 
         float rotation = (360f / tentacles.Length) * i;
         tent.t.RotateAround(tent.t.position, tent.t.up, rotation);
