@@ -33,13 +33,16 @@ public class AvatarClipVideoPlayerController : MonoBehaviour
     {
         if (woodprites.Count == 0)
         {
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 10; i++)
             {
-                GameObject woodprite = Instantiate(woodpritePrefab, transform.position, Quaternion.identity);
+                Vector3 woodspritePosition = GenerateRandomVector() + transform.position;
+                GameObject woodprite = Instantiate(woodpritePrefab, woodspritePosition, Quaternion.identity);
                 woodprites.Add(woodprite);
             }
         }
     }
+
+    // TODO figure out a way to randomly spawn woodprites in the right position/cluster
 
     void DestroyWoodprites()
     {
@@ -48,5 +51,16 @@ public class AvatarClipVideoPlayerController : MonoBehaviour
             Destroy(woodprite);
         }
         woodprites.Clear();
+    }
+
+    private Vector3 minSpawnPosition = new Vector3(-50f, -50f, 0f);
+    private Vector3 maxSpawnPosition = new Vector3(50f, 50f, 50f);
+
+    Vector3 GenerateRandomVector()
+    {
+        float randomX = Random.Range(minSpawnPosition.x, maxSpawnPosition.x);
+        float randomY = Random.Range(minSpawnPosition.y, maxSpawnPosition.y);
+        float randomZ = Random.Range(minSpawnPosition.z, maxSpawnPosition.z);
+        return new Vector3(randomX, randomY, randomZ);
     }
 }
