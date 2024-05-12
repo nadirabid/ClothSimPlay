@@ -6,6 +6,7 @@ using UnityEngine.Video;
 public class AvatarClipVideoPlayerController : MonoBehaviour
 {
     private VideoPlayer videoPlayer;
+    public GameObject woodpritePrefab;
     // Start is called before the first frame update
     void Start()
     {
@@ -18,7 +19,7 @@ public class AvatarClipVideoPlayerController : MonoBehaviour
     {
         Debug.Log($"Nadir: Current timestamp: {videoPlayer.time}");
 
-        if (videoPlayer.time >= 5f && videoPlayer.time <= 15f)
+        if (videoPlayer.time >= 1f && videoPlayer.time <= 15f)
         {
             SpawnWoodprites();
         }
@@ -34,7 +35,7 @@ public class AvatarClipVideoPlayerController : MonoBehaviour
         {
             for (int i = 0; i < 1; i++)
             {
-                GameObject woodprite = Instantiate(Resources.Load<GameObject>("WoodspriteTextured"), transform.position, Quaternion.identity);
+                GameObject woodprite = Instantiate(woodpritePrefab, transform.position, Quaternion.identity);
                 woodprites.Add(woodprite);
             }
         }
