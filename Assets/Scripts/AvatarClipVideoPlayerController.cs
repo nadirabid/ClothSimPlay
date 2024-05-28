@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
+using Unity.PolySpatial;
 
 public class AvatarClipVideoPlayerController : MonoBehaviour
 {
@@ -17,6 +18,7 @@ public class AvatarClipVideoPlayerController : MonoBehaviour
 
     void Update()
     {
+        Unity.PolySpatial.PolySpatialObjectUtils.MarkDirty(videoPlayer.targetTexture);
         // Debug.Log($"Nadir: Current timestamp: {videoPlayer.time}");
 
         // if (videoPlayer.time >= 1f && videoPlayer.time <= 15f)
