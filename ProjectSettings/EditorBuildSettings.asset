@@ -6,4 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes: []
   m_configObjects:
+    UnityEditor.XR.VisionOS.VisionOSSettings: {fileID: 11400000, guid: 2d4aaab052d424fd4afe36eb3e789bdd, type: 2}
+    com.unity.polyspatial.xr.xr_settings: {fileID: 11400000, guid: 83ae10d31cbc34716b2ca912dc0804c5, type: 2}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: d4f89ffbdc8e640c6a04014b75173636, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 897e02cb4d7ff43129e7d2ebd29758c5, type: 2}

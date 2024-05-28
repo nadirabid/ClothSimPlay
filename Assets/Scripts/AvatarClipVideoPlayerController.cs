@@ -17,16 +17,16 @@ public class AvatarClipVideoPlayerController : MonoBehaviour
 
     void Update()
     {
-        Debug.Log($"Nadir: Current timestamp: {videoPlayer.time}");
+        // Debug.Log($"Nadir: Current timestamp: {videoPlayer.time}");
 
-        if (videoPlayer.time >= 1f && videoPlayer.time <= 15f)
-        {
-            SpawnWoodprites();
-        }
-        else if (videoPlayer.time > 200f)
-        {
-            DestroyWoodprites();
-        }
+        // if (videoPlayer.time >= 1f && videoPlayer.time <= 15f)
+        // {
+        //     SpawnWoodprites();
+        // }
+        // else if (videoPlayer.time > 200f)
+        // {
+        //     DestroyWoodprites();
+        // }
     }
 
     void SpawnWoodprites()
